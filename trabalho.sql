@@ -70,7 +70,7 @@ CREATE TABLE album(
 REFERENCES gravadora (cod) ON UPDATE NO ACTION ON DELETE NO ACTION
 ) ON bdspotper_fg01
 
-CREATE TABLE comṕosicao(
+CREATE TABLE composicao(
 	cod smallint NOT NULL,
 	descricao nvarchar(50) NOT NULL,
 
@@ -105,7 +105,7 @@ CREATE TABLE compositor(
 
 	CONSTRAINT compositor_PK PRIMARY KEY (cod),
 	CONSTRAINT compositor_FK FOREIGN KEY (cod_periodo)
-REFERENCES periodo (cod) ON UPDATE NO ACTION ON DELETE NO ACTION
+REFERENCES periodo_musical (cod) ON UPDATE NO ACTION ON DELETE NO ACTION
 ) ON bdspotper_fg01
 
 CREATE TABLE playlist(
@@ -117,7 +117,7 @@ CREATE TABLE playlist(
 	CONSTRAINT playlist_PK PRIMARY KEY (cod)
 ) on bdspotper_fg02
 
-CREATE TABLE faixa(
+CREATE TABLE faixas(
 	numero smallint NOT NULL,
 	tempo_execucao timestamp NOT NULL,
 	descricao nvarchar(50) NOT NULL,
@@ -132,47 +132,82 @@ REFERENCES composicao (cod) ON UPDATE NO ACTION ON DELETE NO ACTION
 ) ON bdspotper_fg02
 
 CREATE CLUSTERED INDEX faixa_IDX_album
-	ON faixa (cod_album)
+	ON faixas (cod_album)
 	WITH (fillfactor=100, pad_index=on)
 
 CREATE NONCLUSTERED INDEX faixa_IDX_composicao
-	ON faixa (cod_composicao)
+	ON faixas (cod_composicao)
 	WITH (fillfactor=100, pad_index=on)
 
 CREATE TABLE faixa_playlist(
-	faixa smallint NOT NULL,
+	faixa_numero smallint NOT NULL,
+	faixa_album smallint NOT NULL,
 	playlist smallint NOT NULL,
 	vezes_tocada smallint DEFAULT 0,
 	ultima_vez_tocada datetime,
 	
-	CONSTRAINT faixa_playlist_PK PRIMARY KEY (faixa, playlist),
-	CONSTRAINT faixa_playlist_FX_faixa FOREIGN KEY (faixa)
-REFERENCES faixa (cod) ON UPDATE NO ACTION ON DELETE CASCADE,
+	CONSTRAINT faixa_playlist_PK PRIMARY KEY (faixa_numero, faixa_album, playlist),
+	CONSTRAINT faixa_playlist_FX_faixa FOREIGN KEY (faixa_numero, faixa_album)
+REFERENCES faixas (numero, cod_album) ON UPDATE NO ACTION ON DELETE CASCADE,
 	CONSTRAINT faixa_playlist_FX_playlist FOREIGN KEY (playlist)
 REFERENCES playlist (cod) ON UPDATE NO ACTION ON DELETE CASCADE
 ) ON bdspotper_fg02
 
 CREATE TABLE faixa_compositor(
-	faixa smallint NOT NULL,
+	faixa_numero smallint NOT NULL,
+	faixa_album smallint NOT NULL,
 	compositor smallint NOT NULL,
 	
-	CONSTRAINT faixa_compositor_PK PRIMARY KEY (faixa, compositor),
-	CONSTRAINT faixa_compositor_FX_faixa FOREIGN KEY (faixa)
-REFERENCES faixa (cod) ON UPDATE NO ACTION ON DELETE CASCADE,
+	CONSTRAINT faixa_compositor_PK PRIMARY KEY (faixa_numero, faixa_album, compositor),
+	CONSTRAINT faixa_compositor_FX_faixa FOREIGN KEY (faixa_numero, faixa_album)
+REFERENCES faixas (numero, cod_album) ON UPDATE NO ACTION ON DELETE CASCADE,
 	CONSTRAINT faixa_compositor_FX_compositor FOREIGN KEY (compositor)
 REFERENCES compositor (cod) ON UPDATE NO ACTION ON DELETE CASCADE
 ) ON bdspotper_fg01
 
 CREATE TABLE faixa_interprete(
-	faixa smallint NOT NULL,
+	faixa_numero smallint NOT NULL,
+	faixa_album smallint NOT NULL,
 	interprete smallint NOT NULL,
 	
-	CONSTRAINT faixa_interprete_PK PRIMARY KEY (faixa, interprete),
-	CONSTRAINT faixa_interprete_FX_faixa FOREIGN KEY (faixa)
-REFERENCES faixa (cod) ON UPDATE NO ACTION ON DELETE CASCADE,
+	CONSTRAINT faixa_interprete_PK PRIMARY KEY (faixa_numero, faixa_album, interprete),
+	CONSTRAINT faixa_interprete_FX_faixa FOREIGN KEY (faixa_numero, faixa_album)
+REFERENCES faixas (numero, cod_album) ON UPDATE NO ACTION ON DELETE CASCADE,
 	CONSTRAINT faixa_interprete_FX_interprete FOREIGN KEY (interprete)
 REFERENCES interprete (cod) ON UPDATE NO ACTION ON DELETE CASCADE
 ) ON bdspotper_fg01
+
+GO
+----------------------------------------------------------------------------------
+/*CREATE VIEW view_playlists_n_de_albuns(playlist, n_de_albuns)
+AS
+	SELECT p.nome, count(*)
+	FROM playlist p, faixa f, faixa_playlist fp, album a
+	WHERE (p.cod=fp.playlist) AND (f.cod=fp.faixa)*/
+ 
+ ---------------------------------------------------------------------------------
+CREATE TRIGGER num_faixa_album	ON faixas FOR INSERT, UPDATE
+	AS
+
+	IF ((SELECT COUNT(*) FROM faixas f, inserted i WHERE f.cod_album = i.cod_album)>= 64)
+	BEGIN
+		RAISERROR ('Número maximo de faixas no album excedido', 10, 6)
+		ROLLBACK TRANSACTION
+	END
+GO
+
+---------------------------------------------------------------------------------
+CREATE FUNCTION albuns_compositor (@nome_compositor nvarchar(50))
+RETURNS @tab_result table(titulo_albuns nvarchar(50))
+AS
+BEGIN
+INSERT INTO @tab_result
+SELECT a.nome
+FROM album a
+WHERE EXISTS (SELECT * FROM faixas f, compositor c
+WHERE f.cod_album=a.cod AND (SELECT c.nome FROM faixas f, compositor c, faixa_compositor fc WHERE c.cod=fc.compositor AND f.cod_album=fc.faixa_album AND f.numero=fc.faixa_numero) like '_@nome_compositor_')
+RETURN
+END
 
 
 
