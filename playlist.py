@@ -15,6 +15,7 @@ while cod_album != -1:
 	cod_album = input()
 	albuns_selecionados.append(cod_album)
 
+
 for album in albuns_selecionados:
 	print album
 	cursor.execute("SELECT f.numero, f.descricao FROM faixas f, albuns a WHERE f.cod_album = a.cod")
@@ -26,6 +27,13 @@ for album in albuns_selecionados:
 	while numero != -1:
 		numero= input()
 		faixas_selecionadas.append((numero, album)) 
+		
 
+cursor.execute("INSERT INTO playlists (cod, nome, tempo_execucao) VALUES (?, ?, ?)", 
+				playlist_cod(), playlist_nome, playlist_tempo)
+
+for faixa in faixas_selecionadas:
+	cursor.execute("INSERT INTO faixa_playlist (faixa_numero, faixa_album, playlist) VAlUES (?, ?, ?)"),
+					faixa[0], faixa[1], playlist_cod)
 
 
