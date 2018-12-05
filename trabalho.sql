@@ -40,7 +40,7 @@ create database bdspotper on
 
 use bdspotper
 
-CREATE TABLE gravadora(
+CREATE TABLE gravadoras(
 	cod smallint NOT NULL,
 	nome nvarchar(50) NOT NULL,
 	homepage nvarchar(50) NOT NULL,
@@ -55,19 +55,20 @@ CREATE TABLE telefone_gravadora(
 
 	CONSTRAINT telefone_gravadora_PK PRIMARY KEY (cod_gravadora, numero_telefone),
 	CONSTRAINT telefone_gravadora_Fk FOREIGN Key (cod_gravadora)
-REFERENCES gravadora (cod) ON UPDATE NO ACTION ON DELETE CASCADE
+REFERENCES gravadoras (cod) ON UPDATE NO ACTION ON DELETE CASCADE
 ) ON bdspotper_fg01
 
-CREATE TABLE album(
+CREATE TABLE albuns(
 	cod smallint NOT NULL,
 	nome nvarchar(50) NOT NULL,
 	tipo_gravacao nvarchar(3) NOT NULL,
-	data_gravacao datetime NOT NULL,
+	preco decimal(4,2) NOT NULL,
+	data_gravacao date NOT NULL,
 	cod_gravadora smallint NOT NULL,
 
 	CONSTRAINT album_PK PRIMARY KEY (cod),
 	CONSTRAINT album_FK FOREIGN KEY (cod_gravadora)
-REFERENCES gravadora (cod) ON UPDATE NO ACTION ON DELETE NO ACTION
+REFERENCES gravadoras (cod) ON UPDATE NO ACTION ON DELETE NO ACTION
 ) ON bdspotper_fg01
 
 CREATE TABLE composicao(
@@ -77,7 +78,7 @@ CREATE TABLE composicao(
 	CONSTRAINT composicao_PK PRIMARY KEY (cod)
 ) ON bdspotper_fg01
 
-CREATE TABLE interprete(
+CREATE TABLE interpretes(
 	cod smallint NOT NULL,
 	nome nvarchar(50) NOT NULL,
 	tipo_interprete nvarchar(50) NOT NULL,
@@ -88,19 +89,19 @@ CREATE TABLE interprete(
 CREATE TABLE periodo_musical(
 	cod smallint NOT NULL,
 	descricao nvarchar(50) NOT NULL,
-	inicio datetime NOT NULL,
-	fim datetime NOT NULL,
+	inicio date NOT NULL,
+	fim date NOT NULL,
 
 	CONSTRAINT periodo_PK PRIMARY KEY (cod)
 ) ON bdspotper_fg01
 
-CREATE TABLE compositor(
+CREATE TABLE compositores(
 	cod smallint NOT NULL,
 	nome nvarchar(50) NOT NULL,
 	cidade_nascimento nvarchar(50) NOT NULL,
 	pais_nascimento nvarchar(50) NOT NULL,
-	data_nascimento datetime NOT NULL,
-	data_morte datetime NOT NULL,
+	data_nascimento date NOT NULL,
+	data_morte date NOT NULL,
 	cod_periodo smallint NOT NULL,
 
 	CONSTRAINT compositor_PK PRIMARY KEY (cod),
@@ -108,25 +109,25 @@ CREATE TABLE compositor(
 REFERENCES periodo_musical (cod) ON UPDATE NO ACTION ON DELETE NO ACTION
 ) ON bdspotper_fg01
 
-CREATE TABLE playlist(
+CREATE TABLE playlists(
 	cod smallint NOT NULL,
 	nome nvarchar(50) NOT NULL,
 	data_criacao  datetime DEFAULT GETDATE(),
-	tempo_execucao timestamp NOT NULL,
+	tempo_execucao time NOT NULL,
 
 	CONSTRAINT playlist_PK PRIMARY KEY (cod)
 ) on bdspotper_fg02
 
 CREATE TABLE faixas(
 	numero smallint NOT NULL,
-	tempo_execucao timestamp NOT NULL,
+	tempo_execucao time NOT NULL,
 	descricao nvarchar(50) NOT NULL,
 	cod_album smallint NOT NULL,
 	cod_composicao smallint NOT NULL,
 
 	CONSTRAINT faixa_PK PRIMARY KEY NONCLUSTERED (numero, cod_album),
 	CONSTRAINT faixa_FK_album FOREIGN KEY (cod_album)
-REFERENCES album (cod) ON UPDATE NO ACTION ON DELETE CASCADE,
+REFERENCES albuns (cod) ON UPDATE NO ACTION ON DELETE CASCADE,
 	CONSTRAINT faixa_FK_composicao FOREIGN KEY (cod_composicao)
 REFERENCES composicao (cod) ON UPDATE NO ACTION ON DELETE NO ACTION
 ) ON bdspotper_fg02
@@ -150,7 +151,7 @@ CREATE TABLE faixa_playlist(
 	CONSTRAINT faixa_playlist_FX_faixa FOREIGN KEY (faixa_numero, faixa_album)
 REFERENCES faixas (numero, cod_album) ON UPDATE NO ACTION ON DELETE CASCADE,
 	CONSTRAINT faixa_playlist_FX_playlist FOREIGN KEY (playlist)
-REFERENCES playlist (cod) ON UPDATE NO ACTION ON DELETE CASCADE
+REFERENCES playlists (cod) ON UPDATE NO ACTION ON DELETE CASCADE
 ) ON bdspotper_fg02
 
 CREATE TABLE faixa_compositor(
@@ -162,7 +163,7 @@ CREATE TABLE faixa_compositor(
 	CONSTRAINT faixa_compositor_FX_faixa FOREIGN KEY (faixa_numero, faixa_album)
 REFERENCES faixas (numero, cod_album) ON UPDATE NO ACTION ON DELETE CASCADE,
 	CONSTRAINT faixa_compositor_FX_compositor FOREIGN KEY (compositor)
-REFERENCES compositor (cod) ON UPDATE NO ACTION ON DELETE CASCADE
+REFERENCES compositores (cod) ON UPDATE NO ACTION ON DELETE CASCADE
 ) ON bdspotper_fg01
 
 CREATE TABLE faixa_interprete(
@@ -174,7 +175,7 @@ CREATE TABLE faixa_interprete(
 	CONSTRAINT faixa_interprete_FX_faixa FOREIGN KEY (faixa_numero, faixa_album)
 REFERENCES faixas (numero, cod_album) ON UPDATE NO ACTION ON DELETE CASCADE,
 	CONSTRAINT faixa_interprete_FX_interprete FOREIGN KEY (interprete)
-REFERENCES interprete (cod) ON UPDATE NO ACTION ON DELETE CASCADE
+REFERENCES interpretes (cod) ON UPDATE NO ACTION ON DELETE CASCADE
 ) ON bdspotper_fg01
 
 GO
@@ -201,11 +202,10 @@ CREATE FUNCTION albuns_compositor (@nome_compositor nvarchar(50))
 RETURNS @tab_result table(titulo_albuns nvarchar(50))
 AS
 BEGIN
-INSERT INTO @tab_result
+INSERT INTO @tab_result	
 SELECT a.nome
-FROM album a
-WHERE EXISTS (SELECT * FROM faixas f, compositor c
-WHERE f.cod_album=a.cod AND (SELECT c.nome FROM faixas f, compositor c, faixa_compositor fc WHERE c.cod=fc.compositor AND f.cod_album=fc.faixa_album AND f.numero=fc.faixa_numero) like '_@nome_compositor_')
+FROM albuns a, faixa_compositor fc, compositores c 
+WHERE fc.faixa_album=a.cod and c.cod=fc.compositor and c.nome like @nome_compositor
 RETURN
 END
 
