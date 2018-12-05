@@ -62,7 +62,7 @@ CREATE TABLE albuns(
 	cod smallint NOT NULL,
 	nome nvarchar(50) NOT NULL,
 	tipo_gravacao nvarchar(3) NOT NULL,
-	preco decimal(4,2) NOT NULL,
+	preco decimal(6,2) NOT NULL,
 	data_gravacao date NOT NULL,
 	cod_gravadora smallint NOT NULL,
 
@@ -180,13 +180,14 @@ REFERENCES interpretes (cod) ON UPDATE NO ACTION ON DELETE CASCADE
 
 GO
 ----------------------------------------------------------------------------------
-/*CREATE VIEW view_playlists_n_de_albuns(playlist, n_de_albuns)
+CREATE VIEW view_playlists_n_de_albuns(playlist, n_de_albuns) WITH schemabinding
 AS
-	SELECT p.nome, count(*)
-	FROM playlist p, faixa f, faixa_playlist fp, album a
-	WHERE (p.cod=fp.playlist) AND (f.cod=fp.faixa)*/
- 
- ---------------------------------------------------------------------------------
+	SELECT p.nome, count(distinct a.cod)
+	FROM dbo.playlists p, dbo.faixa_playlist fp, dbo.albuns a
+	WHERE (p.cod=fp.playlist) AND (fp.faixa_album=a.cod)
+	group by p.nome
+GO 
+----------------------------------------------------------------------------------
 CREATE TRIGGER num_faixa_album	ON faixas FOR INSERT, UPDATE
 	AS
 
@@ -197,6 +198,35 @@ CREATE TRIGGER num_faixa_album	ON faixas FOR INSERT, UPDATE
 	END
 GO
 
+create trigger [dbo].[val_Maior_3_med] on [dbo].[albuns] for
+insert, update
+as
+	declare @novo_preco dec(6,2)
+	declare @media_valor_album dec (9,2)
+	declare @soma_valor_album dec (9,2)
+	declare @str_invalido char(60)
+	declare @num_album smallint
+	DECLARE cursor_bdspotper CURSOR SCROLL for
+	select preco from inserted
+	OPEN cursor_bdspotper
+	FETCH first FROM cursor_bdspotper
+	INTO @novo_preco
+	WHILE (@@fetch_status = 0)
+	BEGIN
+		select @soma_valor_album=sum(a.preco), @num_album=count(*)
+		from albuns a
+		set @media_valor_album=@soma_valor_album/@num_album
+		set @str_invalido='Preco maior que 3 vezes o preco medio dos outros albuns'
+		if (@novo_preco) > 3*(@media_valor_album)
+		begin
+			raiserror(@str_invalido,16,1)
+			rollback transaction
+		end
+		FETCH next FROM cursor_bdspotper INTO @novo_preco
+	end
+	DEALLOCATE cursor_bdspotper
+
+go
 ---------------------------------------------------------------------------------
 CREATE FUNCTION albuns_compositor (@nome_compositor nvarchar(50))
 RETURNS @tab_result table(titulo_albuns nvarchar(50))
@@ -208,6 +238,7 @@ FROM albuns a, faixa_compositor fc, compositores c
 WHERE fc.faixa_album=a.cod and c.cod=fc.compositor and c.nome like @nome_compositor
 RETURN
 END
+
 
 
 
