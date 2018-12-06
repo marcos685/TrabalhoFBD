@@ -1,4 +1,4 @@
-create database bdspotper on
+create database bdspotper/* on
 	primary(
 	NAME = 'bdspotper',
 	FILENAME = '/home/marcos/FBD/bdspotper.mdf',
@@ -34,7 +34,7 @@ create database bdspotper on
 	FILENAME = '/home/marcos/FBD/bdspotper_log.ldf',
 	SIZE = 1024KB,
 	FILEGROWTH = 10%
-	)
+	)*/
 
 -------------------------------------------------------------------------------------------
 
@@ -47,7 +47,7 @@ CREATE TABLE gravadoras(
 	endereco nvarchar(50) NOT NULL,
 
 	CONSTRAINT gravadora_PK PRIMARY KEY (cod),
-) ON bdspotper_fg01
+) --ON bdspotper_fg01
 
 CREATE TABLE telefone_gravadora(
 	cod_gravadora smallint NOT NULL,
@@ -56,27 +56,26 @@ CREATE TABLE telefone_gravadora(
 	CONSTRAINT telefone_gravadora_PK PRIMARY KEY (cod_gravadora, numero_telefone),
 	CONSTRAINT telefone_gravadora_Fk FOREIGN Key (cod_gravadora)
 REFERENCES gravadoras (cod) ON UPDATE NO ACTION ON DELETE CASCADE
-) ON bdspotper_fg01
+) --ON bdspotper_fg01
 
 CREATE TABLE albuns(
 	cod smallint NOT NULL,
 	nome nvarchar(50) NOT NULL,
-	tipo_gravacao nvarchar(3) NOT NULL,
-	preco decimal(6,2) NOT NULL,
-	data_gravacao date NOT NULL,
+	
+	data_gravacao date NOT NULL, 
 	cod_gravadora smallint NOT NULL,
 
 	CONSTRAINT album_PK PRIMARY KEY (cod),
 	CONSTRAINT album_FK FOREIGN KEY (cod_gravadora)
 REFERENCES gravadoras (cod) ON UPDATE NO ACTION ON DELETE NO ACTION
-) ON bdspotper_fg01
+)-- ON bdspotper_fg01
 
 CREATE TABLE composicao(
 	cod smallint NOT NULL,
 	descricao nvarchar(50) NOT NULL,
 
 	CONSTRAINT composicao_PK PRIMARY KEY (cod)
-) ON bdspotper_fg01
+) --ON bdspotper_fg01
 
 CREATE TABLE interpretes(
 	cod smallint NOT NULL,
@@ -84,7 +83,7 @@ CREATE TABLE interpretes(
 	tipo_interprete nvarchar(50) NOT NULL,
 
 	CONSTRAINT interprete_PK PRIMARY KEY (cod)
-) ON bdspotper_fg01
+) --ON bdspotper_fg01
 
 CREATE TABLE periodo_musical(
 	cod smallint NOT NULL,
@@ -93,7 +92,7 @@ CREATE TABLE periodo_musical(
 	fim date NOT NULL,
 
 	CONSTRAINT periodo_PK PRIMARY KEY (cod)
-) ON bdspotper_fg01
+)-- ON bdspotper_fg01
 
 CREATE TABLE compositores(
 	cod smallint NOT NULL,
@@ -107,7 +106,7 @@ CREATE TABLE compositores(
 	CONSTRAINT compositor_PK PRIMARY KEY (cod),
 	CONSTRAINT compositor_FK FOREIGN KEY (cod_periodo)
 REFERENCES periodo_musical (cod) ON UPDATE NO ACTION ON DELETE NO ACTION
-) ON bdspotper_fg01
+) --ON bdspotper_fg01
 
 CREATE TABLE playlists(
 	cod smallint NOT NULL,
@@ -116,21 +115,23 @@ CREATE TABLE playlists(
 	tempo_execucao time NOT NULL,
 
 	CONSTRAINT playlist_PK PRIMARY KEY (cod)
-) on bdspotper_fg02
+) --on bdspotper_fg02
 
 CREATE TABLE faixas(
 	numero smallint NOT NULL,
 	tempo_execucao time NOT NULL,
 	descricao nvarchar(50) NOT NULL,
+	tipo_gravacao nvarchar(3) NOT NULL,
 	cod_album smallint NOT NULL,
 	cod_composicao smallint NOT NULL,
 
 	CONSTRAINT faixa_PK PRIMARY KEY NONCLUSTERED (numero, cod_album),
+	CONSTRAINT faixa_CK_tipo CHECK (tipo_gravacao='add' or tipo_gravacao='ddd'),
 	CONSTRAINT faixa_FK_album FOREIGN KEY (cod_album)
 REFERENCES albuns (cod) ON UPDATE NO ACTION ON DELETE CASCADE,
 	CONSTRAINT faixa_FK_composicao FOREIGN KEY (cod_composicao)
 REFERENCES composicao (cod) ON UPDATE NO ACTION ON DELETE NO ACTION
-) ON bdspotper_fg02
+) --ON bdspotper_fg02
 
 CREATE CLUSTERED INDEX faixa_IDX_album
 	ON faixas (cod_album)
@@ -152,7 +153,7 @@ CREATE TABLE faixa_playlist(
 REFERENCES faixas (numero, cod_album) ON UPDATE NO ACTION ON DELETE CASCADE,
 	CONSTRAINT faixa_playlist_FX_playlist FOREIGN KEY (playlist)
 REFERENCES playlists (cod) ON UPDATE NO ACTION ON DELETE CASCADE
-) ON bdspotper_fg02
+) --ON bdspotper_fg02
 
 CREATE TABLE faixa_compositor(
 	faixa_numero smallint NOT NULL,
@@ -164,7 +165,7 @@ CREATE TABLE faixa_compositor(
 REFERENCES faixas (numero, cod_album) ON UPDATE NO ACTION ON DELETE CASCADE,
 	CONSTRAINT faixa_compositor_FX_compositor FOREIGN KEY (compositor)
 REFERENCES compositores (cod) ON UPDATE NO ACTION ON DELETE CASCADE
-) ON bdspotper_fg01
+) --ON bdspotper_fg01
 
 CREATE TABLE faixa_interprete(
 	faixa_numero smallint NOT NULL,
@@ -176,9 +177,21 @@ CREATE TABLE faixa_interprete(
 REFERENCES faixas (numero, cod_album) ON UPDATE NO ACTION ON DELETE CASCADE,
 	CONSTRAINT faixa_interprete_FX_interprete FOREIGN KEY (interprete)
 REFERENCES interpretes (cod) ON UPDATE NO ACTION ON DELETE CASCADE
-) ON bdspotper_fg01
+) --ON bdspotper_fg01
 
+CREATE TABLE compras(
+	cod smallint NOT NULL,
+	data_compra date DEFAULT GETDATE(),
+	preco decimal(6,2) NOT NULL,
+	cod_album smallint NOT NULL,
+
+	CONSTRAINT compras_PK PRIMARY KEY (cod),
+	CONSTRAINT album_CK_data_compra CHECK (data_compra >20000101),
+	CONSTRAINT compras_FK FOREIGN KEY (cod_album)
+REFERENCES albuns(cod) ON UPDATE CASCADE ON DELETE NO ACTION
+) --on bdspotper_fg01 
 GO
+
 ----------------------------------------------------------------------------------
 CREATE VIEW view_playlists_n_de_albuns(playlist, n_de_albuns) WITH schemabinding
 AS
@@ -198,7 +211,7 @@ CREATE TRIGGER num_faixa_album	ON faixas FOR INSERT, UPDATE
 	END
 GO
 
-create trigger [dbo].[val_Maior_3_med] on [dbo].[albuns] for
+create trigger [dbo].[val_Maior_3_med] on [dbo].[compras] for
 insert, update
 as
 	declare @novo_preco dec(6,2)
@@ -213,8 +226,9 @@ as
 	INTO @novo_preco
 	WHILE (@@fetch_status = 0)
 	BEGIN
-		select @soma_valor_album=sum(a.preco), @num_album=count(*)
-		from albuns a
+		select @soma_valor_album=sum(c.preco), @num_album=count(*)
+		from compras c, inserted i
+		where c.cod <> i.cod
 		set @media_valor_album=@soma_valor_album/@num_album
 		set @str_invalido='Preco maior que 3 vezes o preco medio dos outros albuns'
 		if (@novo_preco) > 3*(@media_valor_album)
