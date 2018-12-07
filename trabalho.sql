@@ -1,4 +1,4 @@
-create database bdspotper/* on
+create database bdspotper on
 	primary(
 	NAME = 'bdspotper',
 	FILENAME = '/home/marcos/FBD/bdspotper.mdf',
@@ -34,7 +34,7 @@ create database bdspotper/* on
 	FILENAME = '/home/marcos/FBD/bdspotper_log.ldf',
 	SIZE = 1024KB,
 	FILEGROWTH = 10%
-	)*/
+	)
 
 -------------------------------------------------------------------------------------------
 
@@ -47,7 +47,7 @@ CREATE TABLE gravadoras(
 	endereco nvarchar(50) NOT NULL,
 
 	CONSTRAINT gravadora_PK PRIMARY KEY (cod),
-) --ON bdspotper_fg01
+) ON bdspotper_fg01
 
 CREATE TABLE telefone_gravadora(
 	cod_gravadora smallint NOT NULL,
@@ -56,7 +56,7 @@ CREATE TABLE telefone_gravadora(
 	CONSTRAINT telefone_gravadora_PK PRIMARY KEY (cod_gravadora, numero_telefone),
 	CONSTRAINT telefone_gravadora_Fk FOREIGN Key (cod_gravadora)
 REFERENCES gravadoras (cod) ON UPDATE NO ACTION ON DELETE CASCADE
-) --ON bdspotper_fg01
+) ON bdspotper_fg01
 
 CREATE TABLE albuns(
 	cod smallint NOT NULL,
@@ -68,14 +68,14 @@ CREATE TABLE albuns(
 	CONSTRAINT album_PK PRIMARY KEY (cod),
 	CONSTRAINT album_FK FOREIGN KEY (cod_gravadora)
 REFERENCES gravadoras (cod) ON UPDATE NO ACTION ON DELETE NO ACTION
-)-- ON bdspotper_fg01
+) ON bdspotper_fg01
 
 CREATE TABLE composicao(
 	cod smallint NOT NULL,
 	descricao nvarchar(50) NOT NULL,
 
 	CONSTRAINT composicao_PK PRIMARY KEY (cod)
-) --ON bdspotper_fg01
+) ON bdspotper_fg01
 
 CREATE TABLE interpretes(
 	cod smallint NOT NULL,
@@ -92,7 +92,7 @@ CREATE TABLE periodo_musical(
 	fim date NOT NULL,
 
 	CONSTRAINT periodo_PK PRIMARY KEY (cod)
-)-- ON bdspotper_fg01
+) ON bdspotper_fg01
 
 CREATE TABLE compositores(
 	cod smallint NOT NULL,
@@ -106,7 +106,7 @@ CREATE TABLE compositores(
 	CONSTRAINT compositor_PK PRIMARY KEY (cod),
 	CONSTRAINT compositor_FK FOREIGN KEY (cod_periodo)
 REFERENCES periodo_musical (cod) ON UPDATE NO ACTION ON DELETE NO ACTION
-) --ON bdspotper_fg01
+) ON bdspotper_fg01
 
 CREATE TABLE playlists(
 	cod smallint NOT NULL,
@@ -115,7 +115,7 @@ CREATE TABLE playlists(
 	tempo_execucao time NOT NULL,
 
 	CONSTRAINT playlist_PK PRIMARY KEY (cod)
-) --on bdspotper_fg02
+) on bdspotper_fg02
 
 CREATE TABLE faixas(
 	numero smallint NOT NULL,
@@ -131,7 +131,7 @@ CREATE TABLE faixas(
 REFERENCES albuns (cod) ON UPDATE NO ACTION ON DELETE CASCADE,
 	CONSTRAINT faixa_FK_composicao FOREIGN KEY (cod_composicao)
 REFERENCES composicao (cod) ON UPDATE NO ACTION ON DELETE NO ACTION
-) --ON bdspotper_fg02
+) ON bdspotper_fg02
 
 CREATE CLUSTERED INDEX faixa_IDX_album
 	ON faixas (cod_album)
@@ -153,7 +153,7 @@ CREATE TABLE faixa_playlist(
 REFERENCES faixas (numero, cod_album) ON UPDATE NO ACTION ON DELETE CASCADE,
 	CONSTRAINT faixa_playlist_FX_playlist FOREIGN KEY (playlist)
 REFERENCES playlists (cod) ON UPDATE NO ACTION ON DELETE CASCADE
-) --ON bdspotper_fg02
+) ON bdspotper_fg02
 
 CREATE TABLE faixa_compositor(
 	faixa_numero smallint NOT NULL,
@@ -165,7 +165,7 @@ CREATE TABLE faixa_compositor(
 REFERENCES faixas (numero, cod_album) ON UPDATE NO ACTION ON DELETE CASCADE,
 	CONSTRAINT faixa_compositor_FX_compositor FOREIGN KEY (compositor)
 REFERENCES compositores (cod) ON UPDATE NO ACTION ON DELETE CASCADE
-) --ON bdspotper_fg01
+) ON bdspotper_fg01
 
 CREATE TABLE faixa_interprete(
 	faixa_numero smallint NOT NULL,
@@ -177,7 +177,7 @@ CREATE TABLE faixa_interprete(
 REFERENCES faixas (numero, cod_album) ON UPDATE NO ACTION ON DELETE CASCADE,
 	CONSTRAINT faixa_interprete_FX_interprete FOREIGN KEY (interprete)
 REFERENCES interpretes (cod) ON UPDATE NO ACTION ON DELETE CASCADE
-) --ON bdspotper_fg01
+) ON bdspotper_fg01
 
 CREATE TABLE compras(
 	cod smallint NOT NULL,
@@ -189,7 +189,7 @@ CREATE TABLE compras(
 	CONSTRAINT album_CK_data_compra CHECK (data_compra >20000101),
 	CONSTRAINT compras_FK FOREIGN KEY (cod_album)
 REFERENCES albuns(cod) ON UPDATE CASCADE ON DELETE NO ACTION
-) --on bdspotper_fg01 
+) on bdspotper_fg01 
 GO
 
 ----------------------------------------------------------------------------------
@@ -252,9 +252,6 @@ FROM albuns a, faixa_compositor fc, compositores c
 WHERE fc.faixa_album=a.cod and c.cod=fc.compositor and c.nome like @nome_compositor
 RETURN
 END
-
-
-
 
 
 		
