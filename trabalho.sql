@@ -83,7 +83,7 @@ CREATE TABLE interpretes(
 	tipo_interprete nvarchar(50) NOT NULL,
 
 	CONSTRAINT interprete_PK PRIMARY KEY (cod)
-) --ON bdspotper_fg01
+) ON bdspotper_fg01
 
 CREATE TABLE periodo_musical(
 	cod smallint NOT NULL,
@@ -186,7 +186,7 @@ CREATE TABLE compras(
 	cod_album smallint NOT NULL,
 
 	CONSTRAINT compras_PK PRIMARY KEY (cod),
-	CONSTRAINT album_CK_data_compra CHECK (data_compra >20000101),
+	CONSTRAINT album_CK_data_compra CHECK (data_compra >'20000101'),
 	CONSTRAINT compras_FK FOREIGN KEY (cod_album)
 REFERENCES albuns(cod) ON UPDATE CASCADE ON DELETE NO ACTION
 ) on bdspotper_fg01 
@@ -209,6 +209,22 @@ CREATE TRIGGER num_faixa_album	ON faixas FOR INSERT, UPDATE
 		RAISERROR ('Número maximo de faixas no album excedido', 10, 6)
 		ROLLBACK TRANSACTION
 	END
+GO
+
+CREATE TRIGGER tipo_gravacao_album_barroco ON compras FOR INSERT, UPDATE
+AS
+	If EXISTS(SELECT 1 
+			  FROM compositores c, periodo_musical pm, faixa_compositor fc, faixas f, inserted i 
+			  WHERE fc.compositor=c.cod and
+			        c.cod_periodo = pm.cod AND
+					fc.faixa_album = i.cod_album AND
+					pm.descricao = 'barroco' and
+					f.tipo_gravacao <> 'ddd')
+	BEGIN
+		RAISERROR ('O album contem musicas do periodo barroco e tipo de gravacao ADD', 10, 6)
+		ROLLBACK TRANSACTION
+	END
+
 GO
 
 create trigger [dbo].[val_Maior_3_med] on [dbo].[compras] for
@@ -239,6 +255,8 @@ as
 		FETCH next FROM cursor_bdspotper INTO @novo_preco
 	end
 	DEALLOCATE cursor_bdspotper
+
+
 
 go
 ---------------------------------------------------------------------------------
